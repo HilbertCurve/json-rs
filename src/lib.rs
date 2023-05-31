@@ -1,14 +1,18 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+mod lexer;
+mod parser;
+mod json;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::lexer::Lexer;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn lexer_test() {
+        let new_buf = "{}[] \n :,::,    \"asfasdf\" ";
+        let mut lexer: Lexer = Lexer::new(new_buf.as_bytes().to_vec());
+
+        let tokens = lexer.tokenify();
+
+        println!("{:?}", tokens);
     }
 }

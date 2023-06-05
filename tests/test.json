@@ -1,0 +1,14 @@
+{
+    "foo": "bar",
+    "tmp": "lmao",
+    "baz": [
+        true,
+        false,
+        "bozo"
+    ],
+    "obj": {
+        "a": 550,
+        "b": 2.0,
+        "c": 2.3e3
+    }
+}

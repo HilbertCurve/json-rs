@@ -1,14 +1,14 @@
 mod lexer;
 mod parser;
-mod json;
-
-pub use json::*;
+pub mod json;
 
 #[cfg(test)]
 mod tests {
-    use crate::JSONValue;
+    use crate::json::{JSONValue, self};
 
     use super::lexer::{Lexer, Token};
+
+    extern crate reqwest;
 
     #[test]
     fn lexer_test() {
@@ -21,7 +21,7 @@ mod tests {
         }";
         let mut lexer: Lexer = Lexer::new(new_buf.as_bytes().to_vec());
 
-        let tokens = lexer.tokenify();
+        let tokens = lexer.tokenify().unwrap();
         
         assert_eq!(vec![
             OpenBrace,
@@ -32,8 +32,27 @@ mod tests {
     }
 
     #[test]
-    fn parser_test() {
-        let new_buf = std::fs::read("tests/test.json").unwrap();
-        println!("{:?}", JSONValue::from(new_buf));
+    fn parser_test() -> json::Result<()> {
+        let buffer = std::fs::read("tests/array.json").unwrap();
+        assert_eq!(JSONValue::Array(vec![
+            JSONValue::Number(1.0),
+            JSONValue::Number(2.0),
+            JSONValue::Number(3.0),
+            JSONValue::Bool(true),
+            JSONValue::Null,
+        ]), JSONValue::new(buffer)?);
+
+        let buffer = std::fs::read("tests/string.json").unwrap();
+        assert_eq!(JSONValue::String("asdfa sdfasdf wallalla tryn 165-08 {}{}___--=+123,./<>?".to_owned()), JSONValue::new(buffer)?);
+
+        let buffer = std::fs::read("tests/test.json").unwrap();
+        let value = JSONValue::new(buffer)?;
+        assert_eq!(&JSONValue::String("bar".to_owned()), value.get("foo")?);
+
+        Ok(())
+    }
+    #[test]
+    fn big_parse_test() -> json::Result<()> {
+        Ok(())
     }
 }

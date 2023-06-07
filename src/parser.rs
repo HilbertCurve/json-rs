@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::lexer::Token;
-use crate::json::*;
+use crate::json::{*, self};
 
 pub struct Parser {
     /// Array of lexed tokens
@@ -29,16 +29,17 @@ impl Parser {
         self.pos += len;
     }
 
-    fn expect(&mut self, expected: Token) {
+    fn expect(&mut self, expected: Token) -> json::Result<()> {
         if self.curr() == expected {
             self.pos += 1;
+            Ok(())
         } else {
-            panic!("expected {:?}, found {:?}", expected, self.curr())
+            Err(JSONError::ParseError(format!("expected {:?}, found {:?}", expected, self.curr())))
         }
     }
 
     /// Parse tokens in current
-    pub fn parse(&mut self) -> JSONValue {
+    pub fn parse(&mut self) -> json::Result<JSONValue> {
         match self.tokens[self.pos].clone() {
             Token::OpenBrace => {
                 // begin object
@@ -52,30 +53,28 @@ impl Parser {
                     let key = match self.tokens[self.pos].clone() {
                         // chops off the quotations
                         Token::StringLiteral(val) => val[1..val.len() - 1].to_owned(),
-                        _ => panic!("expected string literal"),
+                        _ => return Err(JSONError::ParseError("expected string literal".to_owned())),
                     };
                     self.advance(1);
 
                     // expect a colon
-                    self.expect(Token::Colon);
+                    self.expect(Token::Colon)?;
                     // expect a JSONValue
-                    let val = self.parse();
+                    let val = self.parse()?;
                     self.advance(1);
-
-                    println!("{}", self.pos);
 
                     ret.insert(key, val);
 
                     if self.curr() == Token::CloseBrace {
                         break;
                     }
-                    self.expect(Token::Comma);
+                    self.expect(Token::Comma)?;
                 }
                 
-                JSONValue::Object(ret)
+                Ok(JSONValue::Object(ret))
             },
             Token::CloseBrace => {
-                panic!("...")
+                Err(JSONError::ParseError("unexpected token: CloseBrace".to_owned()))
             },
             Token::OpenBracket => {
                 // begin array
@@ -84,7 +83,7 @@ impl Parser {
                 // parse next token continuously, until the end of the array is reached
                 self.pos += 1;
                 loop {
-                    ret.push(self.parse());
+                    ret.push(self.parse()?);
                     // moves us off of value
                     self.pos += 1;
 
@@ -93,39 +92,42 @@ impl Parser {
                         break;
                     }
 
-                    self.expect(Token::Comma);
+                    self.expect(Token::Comma)?;
                 }
 
-                JSONValue::Array(ret)
+                Ok(JSONValue::Array(ret))
             },
             Token::CloseBracket => {
-                panic!("...")
+                Err(JSONError::ParseError("unexpected token: CloseBracket".to_owned()))
             },
             Token::Colon => {
-                panic!("...")
+                Err(JSONError::ParseError("unexpected token: Colon".to_owned()))
             },
             Token::Comma => {
-                panic!("...")
+                Err(JSONError::ParseError("unexpected token: Comma".to_owned()))
             },
             Token::StringLiteral(val) => {
                 // begin string
                 // StringLiteral includes the '"' characters; filter those off
 
-                JSONValue::String(val[1..val.len() - 1].to_owned())
+                Ok(JSONValue::String(val[1..val.len() - 1].to_owned()))
             },
             Token::NumericLiteral(val) => {
                 // begin number
-                // TODO: does this parse every type of JSON number??
-                JSONValue::Number(val.parse().unwrap())
+                // TODO: propper number parser
+                Ok(JSONValue::Number(val.parse().unwrap()))
             },
             Token::True => {
-                JSONValue::Bool(true)
+                Ok(JSONValue::Bool(true))
             },
             Token::False => {
-                JSONValue::Bool(false)
+                Ok(JSONValue::Bool(false))
             },
-            Token::Unknown(_) => {
-                panic!("unknown ...")
+            Token::Null => {
+                Ok(JSONValue::Null)
+            }
+            Token::Unknown(text) => {
+                Err(JSONError::ParseError(format!("unexpected token: {text}")))
             }
         }
     }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr, any::Any};
 
 use crate::{lexer::Lexer, parser::Parser};
 
@@ -53,12 +53,6 @@ impl JSONValue {
         }
     }
 
-    pub fn new(buffer: Vec<u8>) -> Result<JSONValue> {
-        Parser::from(
-            Lexer::new(buffer).tokenify()?
-        ).parse()
-    }
-
     // helper function to assist with <JSONValue as Display>::fmt(). Allows printed
     // JSON text to auto-format spacing. 
     fn fmt_recursive(&self, f: &mut std::fmt::Formatter<'_>, level: usize) -> std::fmt::Result {
@@ -102,18 +96,33 @@ impl JSONValue {
     }
 }
 
-impl From<Vec<u8>> for JSONValue {
-    fn from(value: Vec<u8>) -> Self {
+trait Cast<T> {
+    fn cast(&self) -> Result<T>;
+}
+
+impl Cast<bool> for JSONValue {
+    fn cast(&self) -> Result<bool> {
+        match self {
+            Self::Bool(b) => Ok(*b),
+            other => Err(JSONError::ValueError(format!("expected boolean, found {:?}", other.type_id())))
+        }
+    }
+}
+
+impl TryFrom<Vec<u8>> for JSONValue {
+    type Error = JSONError;
+
+    fn try_from(value: Vec<u8>) -> std::result::Result<Self, Self::Error> {
         Parser::from(
-            Lexer::new(value).tokenify().unwrap()
-        ).parse().unwrap()
+            Lexer::new(value).tokenify()?
+        ).parse()
     }
 }
 
 impl FromStr for JSONValue {
     type Err = JSONError;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        Self::new(s.as_bytes().to_vec())
+        Self::try_from(s.as_bytes().to_vec())
     }
 }
 

@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
-use crate::lexer::Token;
+use crate::lexer::{Token, TokenPos};
 use crate::json::{*, self};
 
 pub struct Parser {
     /// Array of lexed tokens
-    tokens: Vec<Token>,
+    tokens: Vec<TokenPos>,
     /// Current token
     pos: usize,
 }
 
-impl From<Vec<Token>> for Parser {
-    fn from(tokens: Vec<Token>) -> Self {
+impl From<Vec<TokenPos>> for Parser {
+    fn from(tokens: Vec<TokenPos>) -> Self {
         Self {
             tokens,
             pos: 0,
@@ -22,7 +22,7 @@ impl From<Vec<Token>> for Parser {
 impl Parser {
     #[inline]
     fn curr(&self) -> Token {
-        self.tokens[self.pos].clone()
+        self.tokens[self.pos].0.clone()
     }
     #[inline]
     fn advance(&mut self, len: usize) {
@@ -40,7 +40,8 @@ impl Parser {
 
     /// Parse tokens in current
     pub fn parse(&mut self) -> json::Result<JSONValue> {
-        match self.tokens[self.pos].clone() {
+        let (line, column) = (self.tokens[self.pos].1, self.tokens[self.pos].2);
+        match self.curr().clone() {
             Token::OpenBrace => {
                 // begin object
                 let mut ret: HashMap<String, JSONValue> = HashMap::new();
@@ -50,10 +51,10 @@ impl Parser {
                 // while last character is a comma
                 loop {
                     // expect a string literal as a key
-                    let key = match self.tokens[self.pos].clone() {
+                    let key = match self.curr().clone() {
                         // chops off the quotations
                         Token::StringLiteral(val) => val[1..val.len() - 1].to_owned(),
-                        _ => return Err(JSONError::ParseError("expected string literal".to_owned())),
+                        _ => return Err(JSONError::ParseError(format!("expected string literal at line {line}, column {column}"))),
                     };
                     self.advance(1);
 
@@ -74,7 +75,7 @@ impl Parser {
                 Ok(JSONValue::Object(ret))
             },
             Token::CloseBrace => {
-                Err(JSONError::ParseError("unexpected token: CloseBrace".to_owned()))
+                Err(JSONError::ParseError(format!("unexpected token `CloseBrace` at line {line}, column {column}")))
             },
             Token::OpenBracket => {
                 // begin array
@@ -98,13 +99,13 @@ impl Parser {
                 Ok(JSONValue::Array(ret))
             },
             Token::CloseBracket => {
-                Err(JSONError::ParseError("unexpected token: CloseBracket".to_owned()))
+                Err(JSONError::ParseError(format!("unexpected token `CloseBracket` at line {line}, column {column}")))
             },
             Token::Colon => {
-                Err(JSONError::ParseError("unexpected token: Colon".to_owned()))
+                Err(JSONError::ParseError(format!("unexpected token `Colon` at line {line}, column {column}")))
             },
             Token::Comma => {
-                Err(JSONError::ParseError("unexpected token: Comma".to_owned()))
+                Err(JSONError::ParseError(format!("unexpected token `Comma` at line {line}, column {column}")))
             },
             Token::StringLiteral(val) => {
                 // begin string
@@ -127,7 +128,7 @@ impl Parser {
                 Ok(JSONValue::Null)
             }
             Token::Unknown(text) => {
-                Err(JSONError::ParseError(format!("unexpected token: {text}")))
+                Err(JSONError::ParseError(format!("unexpected token `{text}` at line {line}, column {column}")))
             }
         }
     }

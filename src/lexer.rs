@@ -2,7 +2,7 @@ use std::u8;
 
 use crate::json::{self, JSONError};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     OpenBrace,
     CloseBrace,
@@ -18,6 +18,9 @@ pub enum Token {
     Unknown(String),
 }
 
+#[derive(Clone, Debug)]
+pub struct TokenPos(pub Token, pub usize, pub usize);
+
 pub struct Lexer {
     buffer: Vec<u8>,
     pos: usize,
@@ -32,8 +35,8 @@ impl Lexer {
             buffer,
             pos: 0,
             marker: 0,
-            line: 0,
-            column: 0,
+            line: 1,
+            column: 1,
         }
     }
 
@@ -125,7 +128,7 @@ impl Lexer {
         core::str::from_utf8(&self.buffer[self.pos..self.marker]).unwrap()
     }
 
-    pub fn tokenify(&mut self) -> json::Result<Vec<Token>> {
+    pub fn tokenify(&mut self) -> json::Result<Vec<TokenPos>> {
         // quick and dirty; will switch to better system later
         const ALPHABET: [u8; 52] = [
             b'a', b'b', b'c', b'd', b'e', b'f', b'g',
@@ -140,7 +143,7 @@ impl Lexer {
 
         self.pos = 0;
 
-        let mut tokens: Vec<Token> = vec![];
+        let mut tokens: Vec<TokenPos> = vec![];
 
         loop {
             if self.pos == self.buffer.len() {
@@ -148,27 +151,27 @@ impl Lexer {
             }
             match self.curr() {
                 b'{' => {
-                    tokens.push(Token::OpenBrace);
+                    tokens.push(TokenPos(Token::OpenBrace, self.line, self.column));
                     self.advance(1)?;
                 },
                 b'}' => {
-                    tokens.push(Token::CloseBrace);
+                    tokens.push(TokenPos(Token::CloseBrace, self.line, self.column));
                     self.advance(1)?;
                 },
                 b'[' => {
-                    tokens.push(Token::OpenBracket);
+                    tokens.push(TokenPos(Token::OpenBracket, self.line, self.column));
                     self.advance(1)?;
                 },
                 b']' => {
-                    tokens.push(Token::CloseBracket);
+                    tokens.push(TokenPos(Token::CloseBracket, self.line, self.column));
                     self.advance(1)?;
                 },
                 b':' => {
-                    tokens.push(Token::Colon);
+                    tokens.push(TokenPos(Token::Colon, self.line, self.column));
                     self.advance(1)?;
                 },
                 b',' => {
-                    tokens.push(Token::Comma);
+                    tokens.push(TokenPos(Token::Comma, self.line, self.column));
                     self.advance(1)?;
                 },
                 b' ' => {
@@ -179,16 +182,24 @@ impl Lexer {
                 },
                 b'"' => {
                     self.seek(b'"')?;
-                    tokens.push(Token::StringLiteral(self.highlighted().to_owned()));
+                    tokens.push(TokenPos(
+                        Token::StringLiteral(self.highlighted().to_owned()),
+                        self.line,
+                        self.column,
+                    ));
                     self.advance(self.marker - self.pos)?;
                 },
                 b't' => {
                     self.seek_all(&ALPHABET);
 
                     if self.highlighted() == "true" {
-                        tokens.push(Token::True);
+                        tokens.push(TokenPos(Token::True, self.line, self.column));
                     } else {
-                        tokens.push(Token::Unknown(self.highlighted().to_owned()));
+                        tokens.push(TokenPos(
+                            Token::Unknown(self.highlighted().to_owned()),
+                            self.line,
+                            self.column,
+                        ));
                     }
 
                     self.advance(self.marker - self.pos)?;
@@ -197,9 +208,13 @@ impl Lexer {
                     self.seek_all(&ALPHABET);
 
                     if self.highlighted() == "false" {
-                        tokens.push(Token::False);
+                        tokens.push(TokenPos(Token::False, self.line, self.column));
                     } else {
-                        tokens.push(Token::Unknown(self.highlighted().to_owned()));
+                        tokens.push(TokenPos(
+                            Token::Unknown(self.highlighted().to_owned()),
+                            self.line,
+                            self.column,
+                        ));
                     }
 
                     self.advance(self.marker - self.pos)?;
@@ -208,16 +223,24 @@ impl Lexer {
                     self.seek_all(&ALPHABET);
 
                     if self.highlighted() == "null" {
-                        tokens.push(Token::Null);
+                        tokens.push(TokenPos(Token::Null, self.line, self.column));
                     } else {
-                        tokens.push(Token::Unknown(self.highlighted().to_owned()));
+                        tokens.push(TokenPos(
+                            Token::Unknown(self.highlighted().to_owned()),
+                            self.line,
+                            self.column,
+                        ));
                     }
 
                     self.advance(self.marker - self.pos)?;
                 },
                 b'A'..=b'z' => {
                     self.seek_in(b'A', b'z');
-                    tokens.push(Token::Unknown(self.highlighted().to_owned()));
+                    tokens.push(TokenPos(
+                        Token::Unknown(self.highlighted().to_owned()),
+                        self.line,
+                        self.column,
+                    ));
                     self.advance(self.marker - self.pos)?;
                 },
                 b'0'..=b'9' | b'-' | b'+' | b'.' => {
@@ -228,7 +251,11 @@ impl Lexer {
                         b'E', b'+', b'-',
                     ];
                     self.seek_all(&NUM_CHARS);
-                    tokens.push(Token::NumericLiteral(self.highlighted().to_owned()));
+                    tokens.push(TokenPos(
+                        Token::NumericLiteral(self.highlighted().to_owned()),
+                        self.line,
+                        self.column,
+                    ));
                     self.advance(self.marker - self.pos)?;
                 },
                 _ => {

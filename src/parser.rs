@@ -48,6 +48,11 @@ impl Parser {
 
                 self.advance(1);
 
+                // catches the case of an empty object
+                if self.curr() == Token::CloseBrace {
+                    return Ok(JSONValue::Object(ret))
+                }
+
                 // while last character is a comma
                 loop {
                     // expect a string literal as a key
@@ -83,6 +88,12 @@ impl Parser {
 
                 // parse next token continuously, until the end of the array is reached
                 self.pos += 1;
+
+                // catch the case of an empty array
+                if self.curr() == Token::CloseBracket {
+                    return Ok(JSONValue::Array(ret));
+                }
+
                 loop {
                     ret.push(self.parse()?);
                     // moves us off of value

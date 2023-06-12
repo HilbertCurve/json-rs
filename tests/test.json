@@ -10,5 +10,16 @@
         "a": 550,
         "b": 2.0,
         "c": -2.4443E-15
+    },
+    "qux": {
+        "qux_null": null,
+        "qux_arr": [2, 3, false, "asdf", []],
+        "qux_obj": {
+            "0_numeral": 123412314,
+            "nest_arr": [4, 5,6, {
+                "hi": 42,
+                "oof": {}
+            }]
+        }
     }
 }

@@ -186,6 +186,7 @@ impl JSONValue {
         }
     }
 
+    /// Constructs a JSON null value.
     #[inline]
     pub const fn null() -> Self {
         Self::Null
@@ -247,6 +248,12 @@ impl JSONValue {
     }
 }
 
+///////////////////////////////////
+// JSON-to-Rust Type Conversions //
+///////////////////////////////////
+
+/// A helper trait that performs non-consuming type conversions from
+/// JSONValues to Rust primitive types.
 pub trait Cast<T> {
     fn cast(&self) -> Result<T>;
 }
@@ -278,6 +285,26 @@ impl Cast<String> for JSONValue {
     }
 }
 
+macro_rules! impl_cast_int {
+    {$($type_name:ty) +} => {
+        $(impl Cast<$type_name> for JSONValue {
+            fn cast(&self) -> crate::json::Result<$type_name> {
+                match self {
+                    Self::Number(v) => Ok(v.clone() as $type_name),
+                    other => Err(JSONError::ValueError(format!("expected number, found {:?}", other.name()))),
+                }
+            }
+        })+
+    }
+}
+
+impl_cast_int!(i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32);
+
+///////////////////////////////////
+// Rust-to-JSON Type Conversions //
+///////////////////////////////////
+
+// equivalent to <Self as FromStr>::from_str(self, &Vec<u8>::to_string())
 impl TryFrom<Vec<u8>> for JSONValue {
     type Error = JSONError;
 
@@ -294,7 +321,7 @@ impl From<f64> for JSONValue {
     }
 }
 
-// macro for implementing From<> traits for numeric types
+// macro for auto-implementing From<> traits for numeric types
 macro_rules! impl_from_int {
     {$($type_name:ty) +} => {
         $(impl From<$type_name> for JSONValue {
@@ -305,22 +332,11 @@ macro_rules! impl_from_int {
     }
 }
 
-macro_rules! impl_cast_int {
-    {$($type_name:ty) +} => {
-        $(impl Cast<$type_name> for JSONValue {
-            fn cast(&self) -> crate::json::Result<$type_name> {
-                match self {
-                    Self::Number(v) => Ok(v.clone() as $type_name),
-                    other => Err(JSONError::ValueError(format!("expected number, found {:?}", other.name()))),
-                }
-            }
-        })+
-    }
-}
+
 
 impl_from_int!(i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32);
-impl_cast_int!(i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32);
 
+// NOTE: this directly constructs a JSONValue::String, and does not perform any parsing
 impl From<String> for JSONValue {
     fn from(value: String) -> Self {
         Self::String(value)
@@ -333,12 +349,14 @@ impl From<bool> for JSONValue {
     }
 }
 
-impl From<&[JSONValue]> for JSONValue {
-    fn from(value: &[JSONValue]) -> Self {
-        Self::Array(value.to_vec())
+impl From<Vec<JSONValue>> for JSONValue {
+    fn from(value: Vec<JSONValue>) -> Self {
+        Self::Array(value)
     }
 }
 
+
+/// Constructs a JSON null value. Equivalent to Self::null()
 impl From<()> for JSONValue {
     fn from(_: ()) -> Self {
         Self::Null
@@ -354,6 +372,11 @@ impl<T> From<Option<T>> for JSONValue where JSONValue: From<T> {
     }
 } 
 
+///////////////////////////////
+// JSON-Text I/O Conversions //
+///////////////////////////////
+
+// conversion from raw json text into a JSONValue
 impl FromStr for JSONValue {
     type Err = JSONError;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
@@ -367,7 +390,10 @@ impl Display for JSONValue {
     }
 }
 
-// index section. Usage of these traits doesn't have Result<> protection, use wisely!
+//////////////////////////////////////////
+// Indexing without Result<> protection //
+//////////////////////////////////////////
+
 impl Index<&str> for JSONValue {
     type Output = JSONValue;
     fn index(&self, index: &str) -> &Self::Output {
@@ -409,6 +435,19 @@ impl IndexMut<usize> for JSONValue {
         match self {
             JSONValue::Array(arr) => &mut arr[index],
             other => panic!("expected array, found {:?}", other.name()),
+        }
+    }
+}
+
+impl<T> PartialEq<T> for JSONValue
+    where JSONValue: Cast<T>,
+    T: PartialEq<T>,
+{
+    fn eq(&self, other: &T) -> bool {
+        let res: Result<T> = self.cast();
+        match res {
+            Ok(v) => &v == other,
+            Err(_) => false,
         }
     }
 }

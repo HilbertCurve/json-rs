@@ -2,7 +2,7 @@
 name = "json-rs"
 version = "0.1.0"
 description = "Lightweight JSON reader and writer, written in pure rust."
-authors = ["HilbertCurve"]
+authors = ["HilbertCurve", "spacefillingcurve35@gmail.com"]
 edition = "2021"
 license-file = "LICENSE"
 repository = "https://github.com/HilbertCurve/json-rs"

@@ -1,7 +1,15 @@
 [package]
 name = "json-rs"
 version = "0.1.0"
+authors = ["HilbertCurve"]
 edition = "2021"
+license-file = "LICENSE"
+repository = "https://github.com/HilbertCurve/json-rs"
+homepage = "https://github.com/HilbertCurve/json-rs"
+keywords = ["json"]
+categories = ["dev-tools"]
+readme = "README.md"
+exclude = ["/tests"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

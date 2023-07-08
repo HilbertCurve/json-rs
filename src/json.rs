@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::error::Error;
 use std::fmt::Display;
 use std::str::FromStr;
 use std::ops::{Index, IndexMut};
@@ -14,6 +15,21 @@ pub enum JSONError {
     ValueError(String),
     KeyError(String),
     IndexError(String),
+}
+
+impl Error for JSONError {}
+
+impl Display for JSONError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SyntaxError(what) => write!(f, "JSON Syntax Error: {}", what),
+            Self::LexerError(what) => write!(f, "JSON Lexer Error: {}", what),
+            Self::ParseError(what) => write!(f, "JSON Parse Error: {}", what),
+            Self::ValueError(what) => write!(f, "JSON Value Error: {}", what),
+            Self::KeyError(what) => write!(f, "JSON Key Error: {}", what),
+            Self::IndexError(what) => write!(f, "JSON Index Error: {}", what),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -120,13 +120,48 @@ impl Parser {
             },
             Token::StringLiteral(val) => {
                 // begin string
-                // StringLiteral includes the '"' characters; filter those off
 
-                Ok(JSONValue::String(val[1..val.len() - 1].to_owned()))
+                // StringLiteral includes the '"' characters; filter those off
+                let trimmed = val[1..val.len() - 1].to_owned();
+                let t_iter: Vec<char> = trimmed.chars().collect();
+                let mut formatted: Vec<char> = vec![];
+                let mut i = 0;
+                while i < t_iter.len() {
+                    if t_iter[i] == '\\' {
+                        formatted.push(match t_iter[i+1] {
+                            '"' => '"',
+                            '\\' => '\\',
+                            '/' => '/',
+                            'b' => '\u{0008}',
+                            'f' => '\u{000c}',
+                            'n' => '\u{000a}',
+                            'r' => '\u{000d}',
+                            't' => '\u{0009}',
+                            'u' => {
+                                let chars: String = t_iter[i+2..i+6].iter().collect();
+
+                                let num = u16::from_str_radix(&chars, 16)
+                                    .or(Err(JSONError::ValueError(format!("invalid hexadecimal code: {}", chars))))? as u32;
+                                
+                                i += 4;
+                                match char::from_u32(num) {
+                                    Some(v) => v,
+                                    None => return Err(JSONError::ValueError(format!("invalid utf16 hexadecimal code: {}", &chars)))
+                                }
+                            }
+                            _ => return Err(JSONError::ValueError(format!("invalid escape char: {}", t_iter[i+1])))
+                        });
+                        i += 1;
+                    } else {
+                        formatted.push(t_iter[i]);
+                    }
+                    i += 1;
+                }
+
+                Ok(JSONValue::String(String::from_utf8(formatted.iter().map(|c| *c as u8).collect()).unwrap()))
             },
             Token::NumericLiteral(val) => {
                 // begin number
-                // TODO: propper number parser
                 Ok(JSONValue::Number(val.parse().unwrap()))
             },
             Token::True => {

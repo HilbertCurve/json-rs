@@ -88,6 +88,8 @@ impl Lexer {
         Ok(())
     }
 
+    // may use later idk
+    #[allow(dead_code)]
     fn seek(&mut self, codepoint: u8) -> json::Result<()> {
         // this ensures that we don't select the current position
         self.marker = self.pos + 1;
@@ -181,7 +183,25 @@ impl Lexer {
                     self.advance(1)?;
                 },
                 b'"' => {
-                    self.seek(b'"')?;
+                    // this ensures that we don't select the current position
+                    self.marker = self.pos + 1;
+                    loop {
+                        self.marker += 1;
+                        if self.mark() == b'"' {
+                            if self.buffer[self.marker - 1] != b'\\' {
+                                break;
+                            }
+                        }
+                        if self.marker >= self.buffer.len() {
+                            return Err(JSONError::LexerError(
+                                format!(
+                                    "ending \" never found"
+                                )
+                            ));
+                        }
+                    }
+                    // to include seeked-for character
+                    self.marker += 1;
                     tokens.push(TokenPos(
                         Token::StringLiteral(self.highlighted().to_owned()),
                         self.line,

@@ -36,7 +36,8 @@ mod tests {
         ]), JSONValue::try_from(buffer)?);
 
         let buffer = std::fs::read("tests/string.json").unwrap();
-        assert_eq!(JSONValue::String("asdfa sdfasdf wallalla tryn 165-08 {}{}___--=+123,./<>?".to_owned()), JSONValue::try_from(buffer)?);
+        let str: String = JSONValue::try_from(buffer)?.cast()?;
+        assert_eq!("asdfa sdfas\\df / wallalla tryn 165-08 {}{}___--=+123,./<>?".to_owned(), str);
 
         Ok(())
     }

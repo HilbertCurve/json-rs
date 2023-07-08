@@ -1,10 +1,10 @@
 [package]
 name = "json-rs"
-version = "0.1.0"
+version = "0.1.1"
 description = "Lightweight JSON reader and writer, written in pure rust."
 authors = ["HilbertCurve", "spacefillingcurve35@gmail.com"]
 edition = "2021"
-license-file = "LICENSE"
+license = "AGPL-3.0-only"
 repository = "https://github.com/HilbertCurve/json-rs"
 homepage = "https://github.com/HilbertCurve/json-rs"
 keywords = ["json"]

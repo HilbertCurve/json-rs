@@ -34,7 +34,7 @@ impl Parser {
             self.pos += 1;
             Ok(())
         } else {
-            Err(JSONError::ParseError(format!("expected {:?}, found {:?}", expected, self.curr())))
+            Err(JSONError::SyntaxError(format!("expected {:?}, found {:?}", expected, self.curr())))
         }
     }
 
@@ -59,7 +59,7 @@ impl Parser {
                     let key = match self.curr().clone() {
                         // chops off the quotations
                         Token::StringLiteral(val) => val[1..val.len() - 1].to_owned(),
-                        _ => return Err(JSONError::ParseError(format!("expected string literal at line {line}, column {column}"))),
+                        _ => return Err(JSONError::SyntaxError(format!("expected string literal at line {line}, column {column}"))),
                     };
                     self.advance(1);
 
@@ -80,7 +80,7 @@ impl Parser {
                 Ok(JSONValue::Object(ret))
             },
             Token::CloseBrace => {
-                Err(JSONError::ParseError(format!("unexpected token `CloseBrace` at line {line}, column {column}")))
+                Err(JSONError::SyntaxError(format!("unexpected token `CloseBrace` at line {line}, column {column}")))
             },
             Token::OpenBracket => {
                 // begin array
@@ -110,13 +110,13 @@ impl Parser {
                 Ok(JSONValue::Array(ret))
             },
             Token::CloseBracket => {
-                Err(JSONError::ParseError(format!("unexpected token `CloseBracket` at line {line}, column {column}")))
+                Err(JSONError::SyntaxError(format!("unexpected token `CloseBracket` at line {line}, column {column}")))
             },
             Token::Colon => {
-                Err(JSONError::ParseError(format!("unexpected token `Colon` at line {line}, column {column}")))
+                Err(JSONError::SyntaxError(format!("unexpected token `Colon` at line {line}, column {column}")))
             },
             Token::Comma => {
-                Err(JSONError::ParseError(format!("unexpected token `Comma` at line {line}, column {column}")))
+                Err(JSONError::SyntaxError(format!("unexpected token `Comma` at line {line}, column {column}")))
             },
             Token::StringLiteral(val) => {
                 // begin string
@@ -174,7 +174,7 @@ impl Parser {
                 Ok(JSONValue::Null)
             }
             Token::Unknown(text) => {
-                Err(JSONError::ParseError(format!("unexpected token `{text}` at line {line}, column {column}")))
+                Err(JSONError::SyntaxError(format!("unexpected token `{text}` at line {line}, column {column}")))
             }
         }
     }

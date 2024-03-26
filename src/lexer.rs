@@ -53,7 +53,7 @@ impl Lexer {
     fn advance(&mut self, len: usize) -> json::Result<()> {
         // err if out of bounds
         if self.pos + len > self.buffer.len() {
-            return Err(JSONError::LexerError(
+            return Err(JSONError::SyntaxError(
                 format!(
                     "new position {} out of bounds for buffer length {}",
                     self.pos + len,
@@ -96,7 +96,7 @@ impl Lexer {
         while self.mark() != codepoint {
             self.marker += 1;
             if self.marker >= self.buffer.len() {
-                return Err(JSONError::LexerError(
+                return Err(JSONError::SyntaxError(
                     format!(
                         "codepoint {} never found",
                         codepoint as char,
@@ -187,16 +187,15 @@ impl Lexer {
                     self.marker = self.pos + 1;
                     loop {
                         self.marker += 1;
+                        // TODO: code for handling escape chars goes here
                         if self.mark() == b'"' {
                             if self.buffer[self.marker - 1] != b'\\' {
                                 break;
                             }
                         }
                         if self.marker >= self.buffer.len() {
-                            return Err(JSONError::LexerError(
-                                format!(
-                                    "ending \" never found"
-                                )
+                            return Err(JSONError::SyntaxError(
+                                "ending \" never found".to_string()
                             ));
                         }
                     }
@@ -279,7 +278,7 @@ impl Lexer {
                     self.advance(self.marker - self.pos)?;
                 },
                 _ => {
-                    break Err(JSONError::LexerError(
+                    break Err(JSONError::SyntaxError(
                         format!(
                             "invalid character '{}' at line {}, column {}",
                             self.curr() as char,

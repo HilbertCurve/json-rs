@@ -7,13 +7,24 @@ use std::ops::{Index, IndexMut};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 
+/// # JSONError
+///
+/// An enumeration of all possible errors that could be thrown when using this library. Some errors
+/// are at the parsing level caught before a JSONValue is parsed, and others are caught while
+/// using or processing it.
+///
+/// These errors are typically used in expressions using [`json::Result<T>`](Result).
 #[derive(Debug)]
 pub enum JSONError {
+    /// An error involving the validity of an inputted JSON string. For example, this error would be
+    /// returned if someone tries to parse JSON data with an unterminated string.
     SyntaxError(String),
-    LexerError(String),
-    ParseError(String),
+    /// An error involving the types of operations being done on a `JSONValue`. For example, this
+    /// error would be returned if someone tries to index a `Null` object.
     ValueError(String),
+    /// An error used when trying to index a `JSONObject`.
     KeyError(String),
+    /// An error used when trying to index a `JSONArray`.
     IndexError(String),
 }
 
@@ -23,8 +34,6 @@ impl Display for JSONError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::SyntaxError(what) => write!(f, "JSON Syntax Error: {}", what),
-            Self::LexerError(what) => write!(f, "JSON Lexer Error: {}", what),
-            Self::ParseError(what) => write!(f, "JSON Parse Error: {}", what),
             Self::ValueError(what) => write!(f, "JSON Value Error: {}", what),
             Self::KeyError(what) => write!(f, "JSON Key Error: {}", what),
             Self::IndexError(what) => write!(f, "JSON Index Error: {}", what),
@@ -32,16 +41,31 @@ impl Display for JSONError {
     }
 }
 
+/// # JSONValue
+///
+/// The primitive enum type for all values that can be stored in a JSON file, with each enum variant
+/// having a unary tuple type that mimics the behavior of that JSON object.
 #[derive(Clone, Debug, PartialEq)]
 pub enum JSONValue {
+    /// The primitive boolean type.
     Bool(bool),
+    /// The primitive numeric type. JSON numbers are automatically assumed to be double-precision
+    /// floating point numbers.
     Number(f64),
+    /// The primitive ASCII string type.
     String(String),
+    /// The primitive Array type. Under the hood, this is just a vector of other `JSONValue`s.
     Array(Vec<JSONValue>),
+    /// The primitive Object type. Under the hood, this is a HashMap between strings and
+    /// `JSONValue`s, mirroring the object key-value pairs in JSON files.
     Object(HashMap<String, JSONValue>),
+    /// The primitive Null type, similar to the Rust zero-sized tuple `()`.
     Null,
 }
 
+/// # json::Result
+///
+/// Primary form of error management, used like the `std::result::Result` type.
 pub type Result<T> = std::result::Result<T, JSONError>;
 
 impl JSONValue {
@@ -49,6 +73,13 @@ impl JSONValue {
     // Functions that assume `self` is an Object //
     ///////////////////////////////////////////////
 
+    /// Queries for a reference to a value in a `JSONValue::Object`. This is a safer version of
+    /// indexing by string with the angle bracket notation.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not a json `Object`,
+    /// - `Err(KeyError)` if `key` is not found in this `Object`,
+    /// - `Ok(&JSONValue)` with a reference to the queried value otherwise.
     pub fn get(&self, key: &str) -> Result<&JSONValue> {
         match self {
             Self::Object(vals) => {
@@ -63,6 +94,14 @@ impl JSONValue {
             }
         }
     }
+
+    /// Queries for a mutable reference to a value in a `JSONValue::Object`.This is a safer version
+    /// of indexing by string with the angle bracket notation.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not a json `Object`,
+    /// - `Err(KeyError)` if `key` is not found in this `Object`,
+    /// - `Ok(&mut JSONValue)` with a mutable reference to the queried value otherwise.
     pub fn get_mut(&mut self, key: &str) -> Result<&mut JSONValue> {
         match self {
             Self::Object(vals) => {
@@ -77,6 +116,13 @@ impl JSONValue {
             }
         }
     }
+
+    /// Inserts a `value` into a `JSONValue::Object`.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not a json `Object`,
+    /// - `Err(KeyError)` if `key` is already found in this `Object`,
+    /// - `Ok` with a reference to the queried value otherwise.
     pub fn obj_insert(&mut self, key: &str, value: JSONValue) -> Result<()> {
         match self {
             Self::Object(map) => {
@@ -92,6 +138,13 @@ impl JSONValue {
             }
         }
     }
+
+    /// Removes a `value` from a `JSONValue::Object`.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not a json `Object`,
+    /// - `Err(KeyError)` if `key` is not found in this `Object`,
+    /// - `Ok` with the key-value pair of the removed object.
     pub fn obj_remove(&mut self, key: &str) -> Result<(String, JSONValue)> {
         match self {
             Self::Object(map) => {
@@ -107,11 +160,16 @@ impl JSONValue {
         }
     }
 
-
     //////////////////////////////////////////////
     // Functions that assume `self` is an Array //
     //////////////////////////////////////////////
 
+    /// Queries for a reference to a value in a `JSONValue::Array`. This is a safer version of
+    /// indexing by integer with the angle bracket notation.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not a json `Array`, or if `index` is larger than array size
+    /// - `Ok(&JSONValue)` with a reference to the queried value otherwise.
     pub fn try_index(&self, index: usize) -> Result<&JSONValue> {
         match self {
             Self::Array(arr) => {
@@ -126,6 +184,13 @@ impl JSONValue {
             }
         }
     }
+
+    /// Queries for a mutable reference to a value in a `JSONValue::Array`. This is a safer version
+    /// of indexing by integer with the angle bracket notation.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not a json `Array`, or if `index` is larger than array size
+    /// - `Ok(&mut JSONValue)` with a mutable reference to the queried value otherwise.
     pub fn try_index_mut(&mut self, index: usize) -> Result<&mut JSONValue> {
         match self {
             Self::Array(arr) => {
@@ -142,6 +207,12 @@ impl JSONValue {
             }
         }
     }
+
+    /// Adds a value at the end of a `JSONValue::Array`.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not the `Array` enum variant,
+    /// - `Ok` otherwise.
     pub fn arr_push(&mut self, val: JSONValue) -> Result<()> {
         match self {
             Self::Array(arr) => {
@@ -153,6 +224,12 @@ impl JSONValue {
             }
         }
     }
+
+    /// Removes the last value from a `JSONValue::Array`.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not the `Array` enum variant,
+    /// - `Ok` with a reference to the queried value otherwise.
     pub fn arr_pop(&mut self) -> Result<JSONValue> {
         match self {
             Self::Array(arr) => {
@@ -167,6 +244,13 @@ impl JSONValue {
             }
         }
     }
+
+    /// Adds a value at position `pos` in a `JSONValue::Array`.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not the `Array` enum variant,
+    /// - `Err(IndexError)` if `pos` is out of bounds for the array,
+    /// - `Ok` otherwise.
     pub fn arr_insert(&mut self, pos: usize, val: JSONValue) -> Result<()> {
         match self {
             Self::Array(arr) => {
@@ -185,6 +269,13 @@ impl JSONValue {
             }
         }
     }
+
+    /// Removes the value at position `pos` in a `JSONValue::Array`.
+    ///
+    /// Returns:
+    /// - `Err(ValueError)` if `self` is not the `Array` enum variant,
+    /// - `Err(IndexError)` if `pos` is out of bounds for the array,
+    /// - `Ok(JSONValue)`, the removed value otherwise.
     pub fn arr_remove(&mut self, pos: usize) -> Result<JSONValue> {
         match self {
             Self::Array(arr) => {

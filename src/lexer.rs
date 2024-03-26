@@ -187,7 +187,6 @@ impl Lexer {
                     self.marker = self.pos + 1;
                     loop {
                         self.marker += 1;
-                        // TODO: code for handling escape chars goes here
                         if self.mark() == b'"' {
                             if self.buffer[self.marker - 1] != b'\\' {
                                 break;

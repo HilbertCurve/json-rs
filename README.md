@@ -42,3 +42,4 @@ fn main() -> json::Result<()> {
 - Documentation 💀
 - More Tests
 - Ensure JSON Compliance: string literal types, escape chars, etc.
+- Work on macro stuff
